@@ -1,0 +1,6 @@
+; Linked into instrumented builds. Kept tiny with no dependencies since it
+; gets added to every instrumented library.
+
+(library
+ (name assay_runtime)
+ (public_name assay.runtime))

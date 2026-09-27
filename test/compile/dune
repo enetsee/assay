@@ -1,0 +1,23 @@
+; Rewrites corpus.ml with every mutant applied, then compiles and runs the
+; result with no mutant selected. Catches mutants that don't type-check,
+; duplicate ids, and rewrites that blow up in size.
+
+(executable
+ (name rewrite)
+ (modules rewrite)
+ (libraries assay))
+
+(rule
+ (with-stdout-to
+  mutated.ml
+  (run ./rewrite.exe %{dep:corpus.ml})))
+
+(executable
+ (name mutated)
+ (modules mutated)
+ (libraries assay.runtime))
+
+(rule
+ (alias runtest)
+ (action
+  (run %{exe:mutated.exe})))

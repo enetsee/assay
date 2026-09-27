@@ -1,0 +1,34 @@
+ror        5:55  >= -> >
+ror        5:66  <= -> <
+lcr        5:61  && -> ||
+extreme    5:0   bounded -> false
+aor        6:47  *. -> /.
+aor        6:53  +. -> -.
+extreme    6:0   scale -> 0.
+uoi        7:54  c -> not c
+extreme    7:0   pick -> 0
+sbr        8:28  drop 1 of 3
+sbr        8:35  drop 2 of 3
+sbr        8:42  drop 3 of 3
+sbr       11:2   iter -> ()
+extreme   10:0   shout -> ()
+ror       15:43  <> -> =
+uoi       15:40  c -> not c
+sbr       15:37  if c then e -> ()
+extreme   15:0   warn -> ()
+empty     18:2   Set.union a b -> a
+sbr       18:24  e |> f -> e
+extreme   17:0   widen -> Kind.Set.empty
+empty     21:73  Map.add k v m -> m
+extreme   21:0   index -> Name.Map.empty
+aor       22:22  + -> -
+uoi       26:5   c -> not c
+sbr       26:2   if c then e -> ()
+extreme   25:0   log -> ()
+aor       31:36  + -> -
+extreme   31:0   guarded -> 0
+aor       36:35  + -> -
+extreme   36:0   annotated -> 0
+sbr       41:8   e |> f -> e
+sbr       40:2   e1; e2 -> e2
+extreme   39:0   pipes -> ()

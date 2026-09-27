@@ -1,0 +1,32 @@
+; Runs the mutation walk over the files in corpus/ (which aren't compiled)
+; and diffs the points found against the .expected files.
+
+(executable
+ (name dump_points)
+ (modules dump_points)
+ (libraries assay))
+
+(rule
+ (with-stdout-to
+  points.actual
+  (run ./dump_points.exe %{dep:corpus/subject.ml})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff points.expected points.actual)))
+
+(rule
+ (with-stdout-to
+  core_points.actual
+  (run ./dump_points.exe %{dep:corpus/core_subject.ml})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff core_points.expected core_points.actual)))
+
+(cram
+ (deps
+  %{bin:assay}
+  (package assay)))

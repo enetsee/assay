@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name assay)
+ (package assay)
+ (libraries assay.runner))

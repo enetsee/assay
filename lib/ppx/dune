@@ -1,0 +1,15 @@
+; The ppx. It's the top-level [assay] library because that's the name
+; [(instrumentation (backend assay))] and [--instrument-with assay] look up.
+;
+; [ppx_runtime_libraries] makes dune link [assay.runtime] into every
+; instrumented library, and only when building with [--instrument-with].
+; Users never need to list either library themselves.
+
+(library
+ (name assay_ppx)
+ (public_name assay)
+ (kind ppx_rewriter)
+ (ppx_runtime_libraries assay.runtime)
+ (libraries ppxlib unix)
+ (instrumentation.backend
+  (ppx assay)))

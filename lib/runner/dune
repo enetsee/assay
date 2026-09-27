@@ -1,0 +1,7 @@
+; The runner. Doesn't depend on the ppx or runtime; it just reads the .muts
+; files and runs commands.
+
+(library
+ (name assay_runner)
+ (public_name assay.runner)
+ (libraries unix))
