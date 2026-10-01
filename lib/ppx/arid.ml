@@ -28,13 +28,8 @@ let children (e : Ppxlib.expression) : Ppxlib.expression list =
   match e.pexp_desc with
   | Pexp_apply (f, args) -> f :: List.map args ~f:snd
   | Pexp_sequence (a, b) -> [ a; b ]
-  | Pexp_ifthenelse (c, t, else_) ->
-    c
-    :: t
-    ::
-    (match else_ with
-     | Some e -> [ e ]
-     | None -> [])
+  | Pexp_ifthenelse (c, t, Some else_) -> [ c; t; else_ ]
+  | Pexp_ifthenelse (c, t, None) -> [ c; t ]
   | Pexp_let (_, bindings, body) ->
     body :: List.map bindings ~f:(fun (vb : Ppxlib.value_binding) -> vb.pvb_expr)
   (* Just the arms, not the scrutinee. Otherwise a pretty-printer that matches

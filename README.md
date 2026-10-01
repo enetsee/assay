@@ -12,7 +12,7 @@ hand-written list to keep in sync with the code.
 
 ## How it works
 
-`assay` is a dune instrumentation backend. Enable it on a library with:
+`assay` is a [dune instrumentation backend](https://dune.readthedocs.io/en/stable/instrumentation.html). Enable it in a library with:
 
 ```
 (library

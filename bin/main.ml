@@ -152,6 +152,7 @@ let () =
   in
   let total = List.length points in
   let started = Unix.gettimeofday () in
+  let spoke = ref 0. in
   let work =
     List.map points ~f:(fun (point : Assay_runner.Points.t) ->
       point, selected point.library)
@@ -202,8 +203,14 @@ let () =
     Assay_runner.Run.parallel
       config
       ~jobs:!jobs
+        (* Every twenty-five, and every two seconds besides. A run of eight
+         mutants would otherwise print nothing at all between the last message
+         and the table, and silence for minutes reads as a hang. *)
       ~progress:(fun finished ->
-        if finished mod 25 = 0 || finished = total
+        let now = Unix.gettimeofday () in
+        let due = now -. !spoke > 2. in
+        if due then spoke := now;
+        if finished mod 25 = 0 || finished = total || due
         then
           Printf.eprintf
             "%s%d of %d, %.0fs elapsed%s%!"

@@ -8,8 +8,22 @@ type t =
 
 (* Test executables and their paths, from [dune describe tests]. Plain
    [dune describe] doesn't include tests. *)
+(* Asking dune is meant to be cheap: a describe, and one [dune rules] per
+   target, each a few hundredths of a second on a tree that is already built. A
+   call that takes seconds is dune doing something else — waiting on a build
+   lock, or rebuilding because it was asked about a configuration the tree is
+   not in — and the run is about to be far slower than it looks. So the slow
+   ones say so rather than looking like a hang. *)
+let asking (command : string) : string =
+  let started = Unix.gettimeofday () in
+  let answer = Run.capture command in
+  let seconds = Unix.gettimeofday () -. started in
+  if seconds > 1. then Printf.eprintf "  %.1fs  %s\n%!" seconds command;
+  answer
+;;
+
 let test_targets () : (string * string) list =
-  match Sexp.of_string (Run.capture "dune describe tests") with
+  match Sexp.of_string (asking "dune describe tests") with
   | Sexp.Atom _ -> []
   | Sexp.List entries ->
     List.filter_map entries ~f:(fun entry ->
@@ -21,7 +35,7 @@ let test_targets () : (string * string) list =
 (* Non-test executables and their paths. The directory comes from the first
    module's path. *)
 let workspace_targets () : (string * string) list =
-  match Sexp.of_string (Run.capture "dune describe") with
+  match Sexp.of_string (asking "dune describe") with
   | Sexp.Atom _ -> []
   | Sexp.List entries ->
     List.concat_map entries ~f:(fun entry ->
@@ -188,7 +202,7 @@ let build (targets : Config.target list) : t =
     match chosen with
     | Error reason -> unplaced := (name, reason) :: !unplaced
     | Ok target ->
-      let rules = Sexp.many (Run.capture ("dune rules " ^ Filename.quote target)) in
+      let rules = Sexp.many (asking ("dune rules " ^ Filename.quote target)) in
       let libraries =
         List.sort_uniq ~cmp:String.compare (List.concat_map rules ~f:libraries_of_rule)
       in
