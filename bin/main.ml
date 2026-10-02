@@ -14,6 +14,7 @@ let () =
   let build = ref true in
   let results = ref "assay.results" in
   let records = ref "assay.records" in
+  let records_given = ref false in
   let jobs = ref 1 in
   let from = ref "" in
   let check_records = ref "" in
@@ -29,7 +30,10 @@ let () =
       , Arg.Set_string from
       , "<path> regenerate the report from an existing results file" )
     ; ( "-records"
-      , Arg.Set_string records
+      , Arg.String
+          (fun path ->
+            records := path;
+            records_given := true)
       , "<path> where to write a per-file summary of results" )
     ; ( "-check-records"
       , Arg.Set_string check_records
@@ -164,8 +168,15 @@ let () =
         | other -> failwith (Printf.sprintf "%s: unknown outcome %S" !from other))
     in
     Assay_runner.Table.print ~points:(List.map outcomes ~f:fst) ~skips ~outcomes;
-    Assay_runner.Records.write ~path:!records ~today outcomes;
-    Printf.printf "\na record per file in %s\n" !records;
+    (* -check-records and -update-records are about the blocks in the tests,
+       and the summary already exists from the run that made the results.
+       Rewriting it (by default the tracked assay.records) would be a
+       surprise, especially from a check. *)
+    let placing = String.length !check_records > 0 || String.length !update_records > 0 in
+    if !records_given || not placing
+    then (
+      Assay_runner.Records.write ~path:!records ~today outcomes;
+      Printf.printf "\na record per file in %s\n" !records);
     let stale =
       place_records
         ~complete:(Assay_runner.Points.only !from = [])

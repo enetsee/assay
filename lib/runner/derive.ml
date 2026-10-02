@@ -44,7 +44,20 @@ let errors (output : string) : error list =
            match lines with
            | [] -> None, []
            | l :: rest when Option.is_some (location l) -> None, l :: rest
-           | l :: rest when starts_with ~prefix:"Error" l -> Some (String.trim l), rest
+           | l :: rest when starts_with ~prefix:"Error" l ->
+             (* The compiler wraps a long message onto indented lines, e.g. a
+                type too long for the first one. Join them up. *)
+             let rec more (lines : string list) (acc : string list) =
+               match lines with
+               | l :: rest
+                 when String.length l > 0
+                      && (l.[0] = ' ' || l.[0] = '\t')
+                      && String.length (String.trim l) > 0 ->
+                 more rest (String.trim l :: acc)
+               | lines -> String.concat ~sep:" " (List.rev acc), lines
+             in
+             let message, rest = more rest [ String.trim l ] in
+             Some message, rest
            | l :: rest when starts_with ~prefix:"Warning" l -> None, rest
            | _ :: rest -> message rest
          in
@@ -57,11 +70,32 @@ let errors (output : string) : error list =
 
 let reason_prefix = "doesn't type-check:"
 
+(* The index of [sub] in [s], if it's there. *)
+let find (s : string) (sub : string) : int option =
+  let n = String.length s
+  and k = String.length sub in
+  let rec go (i : int) : int option =
+    if i + k > n
+    then None
+    else if String.equal (String.sub s ~pos:i ~len:k) sub
+    then Some i
+    else go (i + 1)
+  in
+  go 0
+;;
+
 let reason (error : error) : string =
   let message =
     if starts_with ~prefix:"Error: " error.message
     then String.sub error.message ~pos:7 ~len:(String.length error.message - 7)
     else error.message
+  in
+  (* The expected type is the one the stage takes, which the first half
+     already shows; what matters is what the stage turned it into. *)
+  let message =
+    match find message " but an expression was expected" with
+    | Some i -> String.sub message ~pos:0 ~len:i
+    | None -> message
   in
   (* No position: it would go stale with the next edit above the point. *)
   Printf.sprintf "%s %s" reason_prefix message

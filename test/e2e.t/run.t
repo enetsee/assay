@@ -212,3 +212,16 @@ other libraries, so it never calls their blocks orphaned.
   records in laws:
     not in run  lib/gone.ml in laws/law_gone.ml
     2 up to date
+
+With -check-records or -update-records, -from leaves assay.records alone: the
+run that made the results already wrote it. -records still asks for it.
+
+  $ echo 'not rewritten' > assay.records
+  $ assay -from assay.results -check-records laws > /dev/null 2>&1
+  [1]
+  $ assay -from assay.results -update-records laws > /dev/null 2>&1
+  $ cat assay.records
+  not rewritten
+  $ assay -from assay.results -check-records laws -records assay.records > /dev/null 2>&1
+  $ grep -c 'mutation testing' assay.records
+  2

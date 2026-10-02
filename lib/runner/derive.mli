@@ -11,7 +11,8 @@
     they can be told apart from ones someone wrote, and removed when their
     point is gone. *)
 
-(** A compiler error: where it starts and its first line. *)
+(** A compiler error: where it starts and its message, with lines the
+    compiler wrapped joined into one. *)
 type error =
   { file : string
   ; line : int
@@ -27,7 +28,9 @@ val errors : string -> error list
 val reason_prefix : string
 
 (** [reason error] is the reason to record for a point skipped because of
-    [error]. *)
+    [error]: {!reason_prefix} and the message, up to the expected type for a
+    type mismatch (e.g. [doesn't type-check: This expression has type
+    Plan.block list -> int list]). *)
 val reason : error -> string
 
 (** Whether an entry with this reason was added by the runner. *)

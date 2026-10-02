@@ -1,0 +1,20 @@
+File "lib/ir/residual.ml", line 686, characters 46-87:
+686 |   let pieces = blocks |> List.map piece |> collect in
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: This expression has type
+         Plan.block list -> (int * point array) list
+       but an expression was expected of type
+         Plan.block list -> Plan.block list
+       Type (int * point array) list is not compatible with type
+         Plan.block list
+
+File "lib/layout/lower.ml", line 131, characters 9-73:
+131 |   |> List.find_opt is_def
+               ^^^^^^^^^^^^^^^^^
+Error: This expression has type Core.Block.def list -> Core.Block.def option
+       but an expression was expected of type
+         Core.Block.def list -> Core.Block.def list
+File "editors/treesitter/grammar_js.ml", lines 247-251, characters 7-18:
+Warning 32 [unused-value-declaration]: unused value x.
+File "editors/treesitter/grammar_js.ml", lines 247-251, characters 7-18:
+Error (warning 26 [unused-var]): unused variable y.

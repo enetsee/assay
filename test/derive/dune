@@ -1,0 +1,16 @@
+; Derive reads compiler errors out of a failed build, including messages the
+; compiler wrapped onto several lines.
+
+(executable
+ (name show_errors)
+ (libraries assay.runner))
+
+(rule
+ (with-stdout-to
+  errors.actual
+  (run ./show_errors.exe %{dep:output.txt})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff errors.expected errors.actual)))

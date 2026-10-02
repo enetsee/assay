@@ -1,0 +1,6 @@
+lib/ir/residual.ml:686:46
+  doesn't type-check: This expression has type Plan.block list -> (int * point array) list
+lib/layout/lower.ml:131:9
+  doesn't type-check: This expression has type Core.Block.def list -> Core.Block.def option
+editors/treesitter/grammar_js.ml:247:7
+  doesn't type-check: Error (warning 26 [unused-var]): unused variable y.
