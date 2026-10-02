@@ -13,8 +13,12 @@ let callee (f : Ppxlib.expression) : string list =
   | _ -> []
 ;;
 
-let config_lines (var : string) : string list =
-  match Sys.getenv_opt var with
+let config_lines ~(flag : string option) (var : string) : string list =
+  match
+    match flag with
+    | Some path -> Some path
+    | None -> Sys.getenv_opt var
+  with
   | Some path when Sys.file_exists path ->
     In_channel.with_open_text path In_channel.input_lines
     |> List.filter ~f:(fun line ->

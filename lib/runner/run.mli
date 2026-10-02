@@ -55,6 +55,10 @@ val baseline : Config.t -> (Config.target * finish * float) list
 
     [progress] is called with the number completed after each mutant.
 
+    [save] is called with each mutant's outcome as soon as it's known, so it
+    can be written out before the run ends. If the run is interrupted, the
+    mutants still running are never passed to it.
+
     [check] is called after each mutant finishes, and returns a reason if the
     build has changed (e.g. another [dune build] replaced a target). Then the
     mutant that just finished, any still running, and any not yet started are
@@ -68,6 +72,7 @@ val parallel
   :  Config.t
   -> jobs:int
   -> progress:(int -> unit)
+  -> save:(Points.t -> outcome -> unit)
   -> check:(unit -> string option)
   -> (Points.t * Config.target list) list
   -> (Points.t * outcome) list

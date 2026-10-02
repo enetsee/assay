@@ -30,3 +30,21 @@
  (deps
   %{bin:assay}
   (package assay)))
+
+; Ids come from what a point is, not where: adding lines and a binding above
+; every point leaves every id as it was.
+
+(rule
+ (with-stdout-to
+  ids.actual
+  (run ./dump_points.exe -ids %{dep:corpus/subject.ml})))
+
+(rule
+ (with-stdout-to
+  shifted_ids.actual
+  (run ./dump_points.exe -ids -shift %{dep:corpus/subject.ml})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff ids.actual shifted_ids.actual)))

@@ -63,28 +63,79 @@ You don't need to add either to a `libraries` field. The ppx declares the
 runtime in `ppx_runtime_libraries`, so dune links it only into instrumented
 builds. Normal builds have no dependency on assay at all.
 
-## Skip list
+## Skipping points
+
+There are two reasons to leave a point out, and they're handled differently.
+
+### Points that don't type-check
 
 Because every mutant is compiled into the same program, one mutant that
-doesn't type-check breaks the build for the whole library.
+doesn't type-check breaks the build for the whole library. Usually it's a
+dropped `|>` stage that changed the type. Nobody decides to skip these; the
+compiler does, so assay finds them itself.
 
-`ASSAY_SKIP` points to a file of point ids to leave out, one per line,
-optionally followed by a tab and a reason. Building it up is iterative:
-build, find the point at the error location, add it, and rebuild.
+When the build fails, the `assay` command looks for errors that start
+exactly at a mutation point, adds those points to the skip list (with the
+compiler's message as the reason) and builds again, until the build passes.
+An error that doesn't start at a point is reported as a build failure. Exact
+positions matter: an error spanning a whole lambda covers every point inside
+it, and guessing the innermost one could skip a perfectly good mutant.
 
-This is slower than it sounds, for two reasons:
+The skip list is the file named by `skip` in the config: one point id per
+line, optionally followed by a tab and a reason. Entries assay added have
+reasons starting `doesn't type-check:`. Treat them as a cache. When a point's
+code changes, its old entry stops matching anything and assay removes it; if
+the new code still doesn't type-check, the next build finds it again.
 
-- dune doesn't track environment variables as inputs, so changing the skip
-  list doesn't trigger a rebuild. Each round needs `dune clean` and
-  `DUNE_CACHE=disabled`.
-- dune stops at the first error, so you only find one bad point per round.
+Pass the file to the ppx with `-skip`, and list it in `deps`, so that dune
+knows it's an input:
 
-Match errors to points by their exact start position. An error spanning a
-whole lambda covers every point inside it, and guessing the innermost one can
-skip a perfectly good mutant. If an error doesn't line up with any single
-point, the mutation type-checked locally and the problem showed up further
-out (e.g. `x |> invalid_arg` with the stage replaced by `Fun.id`). That's
-worth reporting as a bug.
+```
+(library
+ (name core)
+ (instrumentation
+  (backend assay -skip assay.skip)
+  (deps %{workspace_root}/assay.skip)))
+```
+
+Then a change to the list rebuilds only what it affects. The `-skip` path is
+relative to the workspace root, and the file has to exist, even if it's
+empty. The older `ASSAY_SKIP` environment variable still works, but dune
+doesn't track environment variables, so every change to the list needs a
+`dune clean`.
+
+### Points you decide against
+
+For a mutant that can't change anything observable, or code whose result
+nobody reads, put the decision in the code:
+
+```ocaml
+xs |> List.rev [@assay.skip "the order is not observable here"]
+let pp ppf t = ... [@@assay.skip "only used for debugging output"]
+```
+
+An `[@assay.skip "reason"]` attribute skips every point inside the expression
+it's on, plus the point that would drop or replace that expression (above,
+the attribute attaches to `List.rev`, and dropping that stage is skipped).
+`[@@assay.skip "reason"]` on a binding skips the whole binding. The reason is
+required, and shows up in the report. The attribute moves with the code and
+reviewers see it where it applies. A plain build ignores it.
+
+For whole families of functions, like loggers and formatters, use the arid
+list (`ASSAY_ARID` or `-arid`, one function path per line).
+
+### Point ids
+
+A point's id is a hash of what it is, not where it is: its file, its enclosing
+modules and top-level binding, the code being mutated (as printed from the
+parsetree, so formatting and comments don't count), and which occurrence of
+that code it is within the binding. Editing other code, including adding lines
+above a point, leaves its id alone. Editing the point's own code changes the
+id, since an old skip entry no longer describes it.
+
+At the start of each run, assay lists skip entries that match no point (they
+skip nothing) and entries whose point was built anyway (dune reused
+preprocessing from before the list changed).
 
 For reference, on one project with 2418 mutants across fourteen libraries, 52
 points needed skipping, all of them `|>` drops.
@@ -148,6 +199,36 @@ any timeouts and errors, and the survivors. It also writes `assay.results` (one 
 per mutant) and `assay.records` (a per-file summary you can paste into a
 test). Use `-from assay.results` to regenerate the report without rerunning
 anything.
+
+### Records in the tests
+
+Each block in `assay.records` is meant to live in the test that covers its
+source file, as a comment, as evidence that the test checks something. Once a
+block is there, assay keeps it up to date:
+
+```
+assay -update-records test/   # rewrite the blocks under test/ to match this run
+assay -check-records test/    # just report the ones that differ; exits 1 if any
+```
+
+Both also work with `-from`. A block is found by its first line and matched
+to this run's block by the source file on its second. Then:
+
+- A block that differs is replaced, keeping its indentation. A block that
+  differs only in its date is left alone.
+- A block whose source has no mutants in this run is deleted, with the blank
+  line after it. A run limited with `-only` or `ASSAY_ONLY` doesn't delete
+  blocks for files it didn't cover.
+- A source with no block in any test is listed with a suggestion (the test
+  named after the target that killed most of its mutants). Choosing where it
+  goes is up to you; once placed, it's kept up to date.
+
+Survivors are named by binding and operator (`survived in Lower.block (sbr
+2)`), not line number, so a block stays true until that code changes.
+
+`assay.results` is written as each mutant finishes, so if a run is
+interrupted the finished mutants aren't lost. A file from an unfinished run
+starts with a `# unfinished run` line, and `-from` warns that it's partial.
 
 assay also notices if a target executable is rebuilt partway through a run
 (say, by a plain `dune build` in another shell), which would otherwise make

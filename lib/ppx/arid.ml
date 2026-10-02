@@ -1,7 +1,9 @@
 open StdLabels
 
+let file : string option ref = ref None
+
 let configured () : string list =
-  List.map (Common.config_lines "ASSAY_ARID") ~f:String.trim
+  List.map (Common.config_lines ~flag:!file "ASSAY_ARID") ~f:String.trim
 ;;
 
 (* Matches either the full path or a suffix of it, so [Format.printf] in the

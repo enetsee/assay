@@ -40,3 +40,10 @@ let pipes (xs : int list) : unit =
   xs |> List.length |> string_of_int |> print_endline;
   xs |> List.rev |> ignore
 ;;
+
+(* [@assay.skip] skips every point inside it, and the point that would drop
+   the stage it's attached to; [@@assay.skip] skips a whole binding. *)
+let chosen (xs : int list) : int list =
+  (xs |> List.rev [@assay.skip "the order is not observable here"]) |> List.map succ
+
+let decided (x : int) : int = x * 2 [@@assay.skip "only used by the formatter"]

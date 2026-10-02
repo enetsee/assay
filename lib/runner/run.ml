@@ -255,6 +255,7 @@ let parallel
       (config : Config.t)
       ~(jobs : int)
       ~(progress : int -> unit)
+      ~(save : Points.t -> outcome -> unit)
       ~(check : unit -> string option)
       (work : (Points.t * Config.target list) list)
   : (Points.t * outcome) list
@@ -275,6 +276,7 @@ let parallel
   let invalid = ref None in
   let record (i : int) (outcome : outcome) : unit =
     outcomes.(i) <- Some outcome;
+    save (fst work.(i)) outcome;
     incr finished;
     progress !finished
   in

@@ -18,7 +18,8 @@
 
     Format: a header line per unit ([#unit], module name, number of live
     points), followed by one line per point: id, operator, file, line, column,
-    edit. Skipped points have an extra [skipped] field at the end. Fields are
+    binding, edit. Skipped points have an extra [skipped] field at the end, followed
+    by the reason if it came from an [assay.skip] attribute. Fields are
     tab-separated with no escaping; none of them can contain a tab.
 
     Executables don't have a library name, so their points go under
@@ -29,5 +30,5 @@ val write
   -> library:string
   -> unit_name:string
   -> live:Point.t list
-  -> skipped:Point.t list
+  -> skipped:(Point.t * string option) list
   -> unit

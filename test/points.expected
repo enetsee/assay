@@ -32,3 +32,8 @@ extreme   36:0   annotated -> 0
 sbr       41:8   e |> f -> e
 sbr       40:2   e1; e2 -> e2
 extreme   39:0   pipes -> ()
+sbr       47:71  e |> f -> e
+extreme   46:0   chosen -> []
+sbr       47:9   e |> f -> e (skipped: the order is not observable here)
+aor       49:32  * -> / (skipped: only used by the formatter)
+extreme   49:0   decided -> 0 (skipped: only used by the formatter)

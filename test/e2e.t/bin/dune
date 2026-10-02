@@ -1,1 +1,6 @@
-(executable (name main) (instrumentation (backend assay)) (libraries calc))
+(executable
+ (name main)
+ (instrumentation
+  (backend assay -skip assay.skip)
+  (deps %{workspace_root}/assay.skip))
+ (libraries calc))

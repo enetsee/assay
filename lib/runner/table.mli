@@ -37,12 +37,32 @@ val print
   -> outcomes:(Points.t * Run.outcome) list
   -> unit
 
-(** Writes one tab-separated line per mutant: id, operator, file, line, edit,
-    outcome, target, part. Skipped points are included with the outcome
+(** [start_results ~path ~total ~skips] starts a results file for a run of
+    [total] mutants, so that if the run is interrupted the mutants that
+    finished aren't lost. Its first line is {!Points.unfinished_marker}, so
+    [-from] can tell the file is partial; the skipped points follow. *)
+val start_results
+  :  path:string
+  -> total:int
+  -> only:string list
+  -> skips:Points.skip list
+  -> out_channel
+
+(** Adds one mutant's line to a file from {!start_results} and flushes it. *)
+val add_result : out_channel -> Points.t -> Run.outcome -> unit
+
+(** Writes one tab-separated line per mutant: id, operator, file, line,
+    binding, edit, outcome, target, part. Skipped points are included with the outcome
     [skipped], their library as the target and the reason as the part. Can be
-    read back with {!Points.results}. *)
+    read back with {!Points.results}.
+
+    Replaces [path] in one go, including a file from {!start_results}.
+
+    If the run only covered some libraries, [only] names them, in a line
+    {!Points.only} reads back. *)
 val write_results
   :  path:string
+  -> only:string list
   -> skips:Points.skip list
   -> (Points.t * Run.outcome) list
   -> unit

@@ -91,17 +91,62 @@ let block ~(today : string) (file : string) (rows : (Points.t * Run.outcome) lis
          verdict
          (if String.length by = 0 then "" else ", " ^ by)
          rest));
-  (* List survivor line numbers so there's somewhere to start looking. *)
-  let lines =
-    List.sort_uniq
-      ~cmp:compare
-      (List.filter_map rows ~f:(fun ((p : Points.t), outcome) ->
-         if Summary.is_survived outcome then Some p.line else None))
+  (* Name survivors by binding and operator, which stay true when code above
+     them moves. Results from before bindings were recorded fall back to line
+     numbers. *)
+  let survivors =
+    List.sort
+      ~cmp:(fun ((a : Points.t), _) ((b : Points.t), _) -> compare a.line b.line)
+      (List.filter rows ~f:(fun (_, outcome) -> Summary.is_survived outcome))
   in
-  if lines <> []
+  if survivors <> []
   then (
-    Buffer.add_string buf "      survived at lines";
-    List.iter lines ~f:(fun line -> Buffer.add_string buf (Printf.sprintf " %d" line));
+    let named =
+      List.map survivors ~f:(fun ((p : Points.t), _) ->
+        if String.length p.binding = 0
+        then Printf.sprintf "line %d" p.line, p.operator
+        else p.binding, p.operator)
+    in
+    (* In order of first appearance, each with its operators. *)
+    let bindings =
+      List.fold_left named ~init:[] ~f:(fun acc (binding, _) ->
+        if List.mem binding ~set:acc then acc else binding :: acc)
+      |> List.rev
+    in
+    let items =
+      List.map bindings ~f:(fun binding ->
+        let operators =
+          List.filter_map named ~f:(fun (b, operator) ->
+            if String.equal b binding then Some operator else None)
+          |> List.sort ~cmp:(fun a b -> compare (Summary.rank a) (Summary.rank b))
+        in
+        let counted =
+          List.fold_left operators ~init:[] ~f:(fun acc operator ->
+            match acc with
+            | (o, n) :: rest when String.equal o operator -> (o, n + 1) :: rest
+            | _ -> (operator, 1) :: acc)
+          |> List.rev_map ~f:(fun (operator, n) ->
+            if n = 1 then operator else Printf.sprintf "%s %d" operator n)
+        in
+        Printf.sprintf "%s (%s)" binding (String.concat ~sep:", " counted))
+    in
+    (* Wrap to keep the comment within 80 columns. *)
+    let width = 78 in
+    let column = ref 0 in
+    let add (text : string) : unit =
+      Buffer.add_string buf text;
+      column := !column + String.length text
+    in
+    add "      survived in";
+    List.iteri items ~f:(fun i item ->
+      let item = if i < List.length items - 1 then item ^ "," else item in
+      if !column + 1 + String.length item > width && !column > 16
+      then (
+        Buffer.add_char buf '\n';
+        column := 0;
+        add "        ")
+      else add " ";
+      add item);
     Buffer.add_char buf '\n');
   Buffer.add_string buf "   ";
   Buffer.add_string buf (String.make 70 '-');
@@ -109,8 +154,8 @@ let block ~(today : string) (file : string) (rows : (Points.t * Run.outcome) lis
   Buffer.contents buf
 ;;
 
-let write ~(path : string) ~(today : string) (outcomes : (Points.t * Run.outcome) list)
-  : unit
+let blocks ~(today : string) (outcomes : (Points.t * Run.outcome) list)
+  : (string * string) list
   =
   let by_file = Hashtbl.create 64 in
   List.iter outcomes ~f:(fun (((p : Points.t), _) as row) ->
@@ -126,11 +171,17 @@ let write ~(path : string) ~(today : string) (outcomes : (Points.t * Run.outcome
         if sa = sb then String.compare a b else compare sb sa)
       (Hashtbl.fold (fun file rows acc -> (file, List.rev rows) :: acc) by_file [])
   in
+  List.map files ~f:(fun (file, rows) -> file, block ~today file rows)
+;;
+
+let write ~(path : string) ~(today : string) (outcomes : (Points.t * Run.outcome) list)
+  : unit
+  =
   let oc = open_out path in
   Fun.protect
     ~finally:(fun () -> close_out oc)
     (fun () ->
-       List.iter files ~f:(fun (file, rows) ->
-         output_string oc (block ~today file rows);
+       List.iter (blocks ~today outcomes) ~f:(fun (_, block) ->
+         output_string oc block;
          output_char oc '\n'))
 ;;

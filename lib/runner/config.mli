@@ -23,6 +23,10 @@
     doesn't know it, the target runs for every mutant. The command goes
     through [/bin/sh], so you can set env vars etc. in it.
 
+    [skip] is the skip list. When the build fails at points that don't
+    type-check, the runner adds them to it and builds again, so it's created
+    if it doesn't exist.
+
     [arid] is a file of function names to treat as arid (see [Arid] in the
     ppx), e.g. formatters or [failwith]. Only add things once survivors show
     they're noise.

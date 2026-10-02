@@ -159,47 +159,100 @@ let print
       ~f:(fun (p : Points.t) -> Printf.printf "  %-34s %s:%d\n" p.edit p.file p.line)
 ;;
 
+(* Tabs or newlines inside a field would break the format. *)
+let clean : string -> string =
+  String.map ~f:(fun c ->
+    match c with
+    | '\t' | '\n' | '\r' -> ' '
+    | c -> c)
+;;
+
+let line
+      (oc : out_channel)
+      (p : Points.t)
+      (verdict : string)
+      (target : string)
+      (part : string)
+  : unit
+  =
+  Printf.fprintf
+    oc
+    "%d\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n"
+    p.id
+    p.operator
+    (clean p.file)
+    p.line
+    (clean p.binding)
+    (clean p.edit)
+    verdict
+    (clean target)
+    (clean part)
+;;
+
+let outcome_line (oc : out_channel) (p : Points.t) (outcome : Run.outcome) : unit =
+  match outcome with
+  | Run.Killed { target; part } -> line oc p "killed" target part
+  | Run.Survived -> line oc p "survived" "" ""
+  | Run.Hung target -> line oc p "hung" target ""
+  | Run.Errored message -> line oc p "error" "" message
+;;
+
+(* Skipped points carry their library and reason, so [-from] can report them
+   too. *)
+let skip_lines (oc : out_channel) (skips : Points.skip list) : unit =
+  List.iter skips ~f:(fun (s : Points.skip) ->
+    line oc s.point "skipped" s.point.library s.reason)
+;;
+
+(* Says the run covered only some libraries, so [-from] knows that a file
+   missing from it may still have mutants. *)
+let only_line (oc : out_channel) (only : string list) : unit =
+  if only <> []
+  then Printf.fprintf oc "%s %s\n" Points.only_marker (String.concat ~sep:"," only)
+;;
+
+let start_results
+      ~(path : string)
+      ~(total : int)
+      ~(only : string list)
+      ~(skips : Points.skip list)
+  : out_channel
+  =
+  let oc = open_out path in
+  Printf.fprintf
+    oc
+    "%s %d mutants. Lines are added as mutants finish, and the file is rewritten in \
+     order when the run ends.\n"
+    Points.unfinished_marker
+    total;
+  only_line oc only;
+  skip_lines oc skips;
+  flush oc;
+  oc
+;;
+
+let add_result (oc : out_channel) (p : Points.t) (outcome : Run.outcome) : unit =
+  outcome_line oc p outcome;
+  flush oc
+;;
+
+(* Written to a temporary file and renamed over [path], so a failure partway
+   through leaves the unfinished file in place rather than half of this one. *)
 let write_results
       ~(path : string)
+      ~(only : string list)
       ~(skips : Points.skip list)
       (outcomes : (Points.t * Run.outcome) list)
   : unit
   =
-  let oc = open_out path in
-  (* Tabs or newlines inside a field would break the format. *)
-  let clean =
-    String.map ~f:(fun c ->
-      match c with
-      | '\t' | '\n' | '\r' -> ' '
-      | c -> c)
-  in
-  let line (p : Points.t) (verdict : string) (target : string) (part : string) : unit =
-    let p = { p with edit = clean p.edit; file = clean p.file } in
-    let target = clean target
-    and part = clean part in
-    Printf.fprintf
-      oc
-      "%d\t%s\t%s\t%d\t%s\t%s\t%s\t%s\n"
-      p.id
-      p.operator
-      p.file
-      p.line
-      p.edit
-      verdict
-      target
-      part
-  in
+  let temp = path ^ ".tmp" in
+  let oc = open_out temp in
   Fun.protect
-    ~finally:(fun () -> close_out oc)
+    ~finally:(fun () -> close_out_noerr oc)
     (fun () ->
-       List.iter outcomes ~f:(fun ((p : Points.t), outcome) ->
-         match outcome with
-         | Run.Killed { target; part } -> line p "killed" target part
-         | Run.Survived -> line p "survived" "" ""
-         | Run.Hung target -> line p "hung" target ""
-         | Run.Errored message -> line p "error" "" message);
-       (* Skipped points carry their library and reason, so [-from] can report
-          them too. *)
-       List.iter skips ~f:(fun (s : Points.skip) ->
-         line s.point "skipped" s.point.library s.reason))
+       only_line oc only;
+       List.iter outcomes ~f:(fun (p, outcome) -> outcome_line oc p outcome);
+       skip_lines oc skips;
+       close_out oc);
+  Sys.rename temp path
 ;;

@@ -5,10 +5,15 @@
 
     The block doesn't pin exact counts (they change whenever tests are
     added); the point is that every mutant should be killed. Survivors are
-    listed by line number.
+    listed by binding and operator, e.g. [survived in Lower.block (sbr 2)],
+    which stays true until that code changes.
 
-    We don't know which test a file belongs to, so the block lists the
-    targets that killed its mutants and it's up to you where to put it. *)
+    The block lists the targets that killed its mutants. Where it lives is
+    up to you; once it's in a test, {!Placed} keeps it up to date. *)
+
+(** [blocks ~today outcomes] is each source file with its block, the files
+    with the most survivors first. *)
+val blocks : today:string -> (Points.t * Run.outcome) list -> (string * string) list
 
 (** [write ~path ~today outcomes] writes one block per file, with the files
     that have the most survivors first. *)

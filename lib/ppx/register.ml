@@ -87,6 +87,20 @@ let rewrite (context : Ppxlib.Expansion_context.Base.t) (structure : Ppxlib.stru
     mutated.structure)
 ;;
 
+(* Given in the instrumentation stanza, e.g. [(backend assay -skip
+   %{workspace_root}/assay.skip)], with the same file in its [deps] so dune
+   reprocesses when it changes. *)
+let () =
+  Ppxlib.Driver.add_arg
+    "-skip"
+    (String (fun path -> Skip.file := Some path))
+    ~doc:"<path> the skip list (instead of ASSAY_SKIP)";
+  Ppxlib.Driver.add_arg
+    "-arid"
+    (String (fun path -> Arid.file := Some path))
+    ~doc:"<path> the arid list (instead of ASSAY_ARID)"
+;;
+
 (* Run [Before] other rewriters so we mutate the code as written, not
    generated code. *)
 let () =

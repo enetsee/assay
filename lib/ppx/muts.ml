@@ -2,26 +2,43 @@ open StdLabels
 
 let header = "#unit"
 
-let block ~(unit_name : string) ~(live : Point.t list) ~(skipped : Point.t list) : string =
+let block
+      ~(unit_name : string)
+      ~(live : Point.t list)
+      ~(skipped : (Point.t * string option) list)
+  : string
+  =
   let buf = Buffer.create 1024 in
   Buffer.add_string
     buf
     (Printf.sprintf "%s\t%s\t%d\n" header unit_name (List.length live));
+  (* Tabs and newlines in a binding (a printed pattern) or an attribute's
+     reason would break the format. *)
+  let clean =
+    String.map ~f:(fun c ->
+      match c with
+      | '\t' | '\n' | '\r' -> ' '
+      | c -> c)
+  in
   let add (suffix : string) (p : Point.t) : unit =
     Buffer.add_string
       buf
       (Printf.sprintf
-         "%d\t%s\t%s\t%d\t%d\t%s%s\n"
+         "%d\t%s\t%s\t%d\t%d\t%s\t%s%s\n"
          p.id
          (Operator.to_string p.operator)
          p.file
          p.line
          p.column
+         (clean p.binding)
          p.edit
          suffix)
   in
   List.iter live ~f:(add "");
-  List.iter skipped ~f:(add "\tskipped");
+  List.iter skipped ~f:(fun (p, reason) ->
+    match reason with
+    | None -> add "\tskipped" p
+    | Some reason -> add ("\tskipped\t" ^ clean reason) p);
   Buffer.contents buf
 ;;
 
@@ -86,7 +103,7 @@ let write
       ~(library : string)
       ~(unit_name : string)
       ~(live : Point.t list)
-      ~(skipped : Point.t list)
+      ~(skipped : (Point.t * string option) list)
   : unit
   =
   mkdir_p dir;

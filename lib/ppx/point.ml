@@ -7,6 +7,7 @@ type t =
   ; line : int
   ; column : int
   ; edit : string
+  ; binding : string
   }
 
 (* FNV-1a. Not using [Hashtbl.hash] because it isn't guaranteed to be stable
@@ -17,19 +18,19 @@ let hash (s : string) : int =
   !h
 ;;
 
-let make ~(operator : Operator.t) ~(loc : Ppxlib.Location.t) ~(edit : string) : t =
+let make
+      ~(operator : Operator.t)
+      ~(loc : Ppxlib.Location.t)
+      ~(edit : string)
+      ~(binding : string)
+      ~(key : string)
+  : t
+  =
   let file = loc.loc_start.pos_fname in
   let line = loc.loc_start.pos_lnum in
   let column = loc.loc_start.pos_cnum - loc.loc_start.pos_bol in
   let id =
-    hash
-      (Printf.sprintf
-         "%s:%d:%d:%s:%s"
-         file
-         line
-         column
-         (Operator.to_string operator)
-         edit)
+    hash (Printf.sprintf "%s:%s:%s:%s" file key (Operator.to_string operator) edit)
   in
-  { id; operator; file; line; column; edit }
+  { id; operator; file; line; column; edit; binding }
 ;;
